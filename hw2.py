@@ -92,7 +92,7 @@ def SJF(processes):
 
 def main():
     #get a list of processes from a txt file
-    processes = get_processes('mrd_processes.txt')
+    processes = get_processes('processes.txt')
 
     #run shortest job first simulation on the list of processes
     results = SJF(processes)
