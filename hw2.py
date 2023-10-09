@@ -1,3 +1,4 @@
+#Each process is an object with the following attributes
 class process:
     def __init__(self, name, arrival_time, burst_time, priority, wait_time=0):
         self.name = name
@@ -10,15 +11,14 @@ class process:
         print(str(self.name) + ' ' + str(self.arrival_time) + ' ' + str(self.burst_time) + ' ' + str(self.priority) + ' wait time is: ' + str(self.wait_time))
         return
 
-    def run_process(self,time):
-        return process(self.name,self.arrival_time,self.burst_time - time, self.priority)
-
+#prints a list of processes
 def print_process_list(arr):
     for p in arr:
         p.print_process()
 
+#reads from a csv of processes where the order is:
+# name, arrival time, burst_time, priority, wait time (optional, defaults to 0)
 def get_processes(file_path):
-
     processes = []
     with open(file_path, 'r') as file:
         for line in file:
@@ -27,39 +27,7 @@ def get_processes(file_path):
             processes.append(p)
     return processes
 
-def SJF(processes):
-    incoming = processes
-    ready_queue = []
-    time = 0
-    flag = True
-
-    while incoming or ready_queue:
-        for p in incoming:
-            if p.arrival_time <= time:
-                ready_queue.append(p)
-                incoming.remove(p)
-
-        shortest_time = ready_queue[0].burst_time
-        shortest_process = ready_queue[0]
-
-        for p in ready_queue:
-            if p.burst_time < shortest_time:
-                shortest_process = p
-
-        if shortest_process:
-            ready_queue.remove(shortest_process)
-            time_needed = shortest_process.burst_time
-            ran_process = shortest_process.run_process(shortest_process.burst_time)
-            time = time + time_needed
-        else:
-            time = time + 1
-
-        print('This process ran: ')
-        shortest_process.print_process()
-
-
-    print(time)
-
+#finds processes whos arrival time = current time from the incoming processes
 def find_process(processes,time):
     found = []
     for p in processes:
@@ -70,66 +38,74 @@ def find_process(processes,time):
         return found
     else:
         return False
-    
-def SJF_v2(processes,time,to_run,queue,running,results,limit):
-    incoming = processes
-    ready_queue = queue
 
-    if len(results) == limit:
-        return results
-    if running:
-        index = ready_queue.index(to_run)
-        ready_queue[index].print_process()
-        ready_queue[index].burst_time = ready_queue[index].burst_time - 1
-        for p in ready_queue:
-            p.wait_time = p.wait_time + 1
-        
-        if ready_queue[index].burst_time == 0:
-            results.append(ready_queue[index])
-            ready_queue.pop(index)
-            return SJF_v2(incoming,time+1,False,ready_queue,False,results,limit)
-        else:
-            return SJF_v2(incoming,time+1,ready_queue[index],ready_queue,True,results,limit)
-        
-    else:
+#performs a shortest job first cpu scheduler simulation
+def SJF(processes):
+    #declare initial values
+    time = 0
+    incoming = processes
+    ready_queue = []
+    results = []
+    running = []
+
+    #while there is processes to join the ready queue, 
+    #processes in the ready queue, or a process is running the scheduler must run
+    while (incoming or ready_queue) or running:
+        print('Current time: ' + str(time))
+        #check if any processes can join the ready queue and add them
         add_to_queue = find_process(incoming,time)
         if add_to_queue:
             for p in add_to_queue:
+                print (p.name + ' ADDED')
                 ready_queue.append(p)
                 incoming.remove(p)
 
-        shortest_p = process('dummy', 1, 1000, 0)
+        #if no process is running go find one to schedule
+        if not running:
+            #if we have any processes in the queue, find the shortest one
+            if ready_queue:
+                shortest_p = ready_queue[0]
+                for p in ready_queue:
+                   if p.burst_time < shortest_p.burst_time:
+                       shortest_p = p
 
-        if ready_queue:
+                running.append(shortest_p)
+                ready_queue.remove(shortest_p)
+
+        #if a process is currently running (or one was just added and started running)
+        #decrement the remaining burst time and increase all processes in the queue wait time
+        if running:
+            running[0].burst_time = running[0].burst_time - 1
+            print(running[0].name + ' is running, time left: ' + str(running[0].burst_time))
             for p in ready_queue:
-                if p.burst_time < shortest_p.burst_time:
-                    shortest_p = p
-            return SJF_v2(incoming,time+1,shortest_p,ready_queue,True,results,limit)
-        else:
-            return SJF_v2(incoming,time+1,False,ready_queue,False,results,limit)
+                p.wait_time = p.wait_time + 1
 
+            #if the process is done running add it to the results and clear running.
+            if running[0].burst_time == 0:
+                results.append(running[0])
+                running = []
 
+        time = time + 1
 
-
-    
-
-
-    
-
-
-
+    print("Shorest Job First Simulation completed, total run time: " + str(time) + "\n")
+    return results
 
 def main():
+    #get a list of processes from a txt file
     processes = get_processes('mrd_processes.txt')
 
-    for p in processes:
-        p.print_process()
+    #run shortest job first simulation on the list of processes
+    results = SJF(processes)
 
-    #SJF(processes)
-    print('----------')
-    x = find_process(processes,1)
-    print_process_list(x)
+    #calculate total wait time
+    total_wait = 0
+    for p in results:
+        total_wait = total_wait + p.wait_time
 
-    SJF_v2(processes,0,False,[],False,[],len(processes))
+    #display results and calculate average wait time
+    print('The result list is in order of when they ran. With the top being who ran first.')
+    print('Final Results: ')
+    print('Avg wait time: ' + str(total_wait/len(results)))
+    print_process_list(results)
 
 main()
